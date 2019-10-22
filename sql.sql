@@ -14,10 +14,11 @@
 WITH with_holidays AS (
 SELECT title, description, rental_rate,
 	CASE
-	WHEN title LIKE halloween OR description LIKE halloween THEN Halloween 
-	WHEN title LIKE christmas OR description LIKE christmas THEN Christmas 
-	WHEN title LIKE valentine OR description LIKE valentine THEN Valentines_Day 
+	WHEN title ILIKE 'halloween' OR description ILIKE 'halloween' THEN 'Halloween' 
+	WHEN title ILIKE 'christmas' OR description ILIKE 'christmas' THEN 'Christmas' 
+	WHEN title ILIKE 'valentine' OR description ILIKE 'valentine' THEN 'Valentines_Day' 
 	ELSE '' 
+	END AS Holiday
 FROM film
 ORDER BY holiday DESC, title)
 SELECT *,
@@ -37,7 +38,7 @@ SELECT DISTINCT rental_rate
 FROM film
 ORDER by rental_rate
 LIMIT 1
-)
+), 
 rate_next_above_1 AS (
 SELECT DISTINCT rental_rate
 FROM film
@@ -48,8 +49,9 @@ LIMIT 1
 
 SELECT title, rental_rate,
 	CASE
-	WHEN rental_rate = (SELECT FROM lowest_rate) THEN 0.10 
-	WHEN rental_rate = (SELECT FROM rate_next_above_1) THEN 1 
+	WHEN rental_rate = (SELECT * FROM lowest_rate) THEN 0.10 
+	WHEN rental_rate = (SELECT * FROM rate_next_above_1) THEN 1 
+	ELSE rental_rate
 	END AS new_rate
 FROM film
 WHERE rating = 'PG-13';
@@ -64,7 +66,8 @@ FROM film_actor as fa
 	JOIN film as f ON fa.film_id=f.film_id
 	JOIN actor as a ON fa.actor_id=a.actor_id
 GROUP BY a.actor_id
-ORDER BY COUNT(*) DESC) 
+ORDER BY COUNT(*) DESC
+LIMIT 1) 
 ,
 films_list AS (
 SELECT f.film_id, fa.actor_id
@@ -73,25 +76,25 @@ JOIN film_actor as fa ON f.film_id = fa.film_id
 WHERE fa.actor_id = (SELECT actor_id FROM top_actor)
 )
 
-SELECT DISTINCT fa.actor_id, a.first_name + a.last_name as name -- || ' ' ||
+SELECT DISTINCT fa.actor_id, a.first_name || ' ' || a.last_name as name -- || ' ' ||
 FROM film as f
 	JOIN film_actor as fa ON f.film_id=fa.film_id
 	JOIN actor as a ON a.actor_id=fa.actor_id
 WHERE f.film_id IN (SELECT film_id FROM films_list) AND
-WHERE fa.actor_id != (SELECT actor_id FROM top_actor); 
+	fa.actor_id != (SELECT actor_id FROM top_actor); 
   
   
   
 -- BONUS ROUND! Go through again, this time there's new errors!
 -- hint: 3 errors
 WITH with_holidays AS (
-SELECT title, description, rental_rate 
+SELECT title, description, rental_rate, 
 	CASE
-	WHEN titel ILIKE '%halloween%' OR description ILIKE '%halloween%' THEN 'Halloween' 
+	WHEN title ILIKE '%halloween%' OR description ILIKE '%halloween%' THEN 'Halloween' 
 	WHEN title ILIKE '%christmas%' OR description ILIKE '%christmas%' THEN 'Christmas'
 	WHEN title ILIKE '%valentine%' OR description ILIKE '%valentine%' THEN 'Valentines Day'
 	ELSE ''
-	END 
+	END AS holiday
 FROM film
 ORDER BY holiday DESC, title)
 SELECT *,
@@ -113,19 +116,19 @@ LIMIT 1
 , rate_next_above_1 AS (
 SELECT DISTINCT rental_rate
 FROM film
-HAVING rental_rate > 1 
+WHERE rental_rate > 1 
 ORDER by rental_rate
 LIMIT 1
 )
 
 SELECT title, rental_rate,
 	CASE
-	WHERE rental_rate = (SELECT * FROM lowest_rate) THEN 0.10 
-	WHERE rental_rate = (SELECT * FROM rate_next_above_1) THEN 1 
+	WHEN rental_rate = (SELECT * FROM lowest_rate) THEN 0.10 
+	WHEN rental_rate = (SELECT * FROM rate_next_above_1) THEN 1 
 	ELSE rental_rate
 	END AS new_rate
 FROM film
-WHERE rating IS 'PG-13'; 
+WHERE rating = 'PG-13'; 
 
 
 
@@ -136,8 +139,8 @@ SELECT a.actor_id, COUNT(*)
 FROM film_actor as fa
 	JOIN film as f ON fa.film_id=f.film_id
 	JOIN actor as a ON fa.actor_id=a.actor_id
-ORDER BY COUNT(*) DESC
-GROUP BY a.actor_id  
+GROUP BY a.actor_id 
+ORDER BY COUNT(*) DESC 
 LIMIT 1)
 ,
 films_list AS (
@@ -149,7 +152,7 @@ WHERE fa.actor_id = (SELECT actor_id FROM top_actor)
 
 SELECT DISTINCT fa.actor_id, a.first_name||' '||a.last_name as name
 FROM film as f
-	JOIN film_actor as fa 
-	JOIN actor as a 
+	JOIN film_actor as fa USING(film_id)
+	JOIN actor as a USING(actor_id)
 WHERE f.film_id IN (SELECT film_id FROM films_list) AND
 	fa.actor_id != (SELECT actor_id FROM top_actor);
